@@ -1,0 +1,25 @@
+ /******************************************************************************
+ *
+ * Project Name: DoorLockerSecuritySystem
+ *
+ * File Name: HMI_main.h
+ *
+ * Description: Header file for HMI_main Micro-controller
+ *
+ * Author: Mohamed Magdy
+ *
+ *******************************************************************************/
+
+#ifndef CONTROL_MAIN_H_
+#define CONTROL_MAIN_H_
+
+
+
+/*******************************************************************************
+ *                      Functions Prototypes                                   *
+ *******************************************************************************/
+
+void storePassword(uint16 address, uint32 password);
+
+
+#endif /* CONTROL_MAIN_H_ */

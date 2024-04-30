@@ -1,0 +1,10 @@
+Control_main.o Control_main.o: ../Control_main.c ../HAL/uart.h \
+  ../HAL/std_types.h ../MCAL/std_types.h ../control_main.h
+
+../HAL/uart.h:
+
+../HAL/std_types.h:
+
+../MCAL/std_types.h:
+
+../control_main.h:

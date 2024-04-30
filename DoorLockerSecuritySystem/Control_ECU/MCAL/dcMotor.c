@@ -1,0 +1,95 @@
+/******************************************************************************
+ *
+ * Project Name: DoorLockerSecuritySystem
+ * Module: DC-MOTOR
+ * File Name: dcMotor.c
+ * Description: Source file for Fan Controller System Project
+ * Author: Mohamed Magdy
+ *
+ *******************************************************************************/
+
+#include "dcMotor.h"
+#include "../HAL/gpio.h"
+#include "std_types.h"
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+/*
+ * Description :
+ * The Function responsible for setup the direction for the two
+ * motor pins through the GPIO driver.
+ * Stop at the DC-Motor at the beginning through the GPIO driver.
+ */
+
+void DcMotor_Init(void)
+{
+	GPIO_setupPinDirection(DC_MOTOR_PORT1_ID, DC_MOTOR_PIN1_ID, PIN_OUTPUT);
+	GPIO_setupPinDirection(DC_MOTOR_PORT2_ID, DC_MOTOR_PIN2_ID, PIN_OUTPUT);
+
+	/* Motor is stop at the beginning */
+	GPIO_writePin(DC_MOTOR_PORT1_ID, DC_MOTOR_PIN1_ID, LOGIC_LOW);
+	GPIO_writePin(DC_MOTOR_PORT2_ID, DC_MOTOR_PIN2_ID, LOGIC_LOW);
+}
+
+/*
+ * Description :
+ * The function responsible for rotate the DC Motor CW/ or A-CW or
+   stop the motor based on the state input state value.
+ * Send the required duty cycle to the PWM driver based on the
+   required speed value.
+ */
+
+void DcMotor_Rotate(DcMotor_State state, uint8 speed)
+{
+	switch (state)
+	{
+	case CW:
+		/* Motor is rotate CLOCK wise*/
+		GPIO_writePin(DC_MOTOR_PORT1_ID, DC_MOTOR_PIN1_ID, LOGIC_HIGH);
+		GPIO_writePin(DC_MOTOR_PORT2_ID, DC_MOTOR_PIN2_ID, LOGIC_LOW);
+		break;
+	case A_CW:
+		/* Motor is rotate Anti-CLOCK wise*/
+		GPIO_writePin(DC_MOTOR_PORT1_ID, DC_MOTOR_PIN1_ID, LOGIC_LOW);
+		GPIO_writePin(DC_MOTOR_PORT2_ID, DC_MOTOR_PIN2_ID, LOGIC_HIGH);
+		break;
+	case stop:
+		/* Motor is stop */
+		GPIO_writePin(DC_MOTOR_PORT1_ID, DC_MOTOR_PIN1_ID, LOGIC_LOW);
+		GPIO_writePin(DC_MOTOR_PORT2_ID, DC_MOTOR_PIN2_ID, LOGIC_LOW);
+		break;
+	}
+
+	/*
+	 * Send the required duty cycle to the PWM driver based on the
+	   required speed value.
+	 */
+	PWM_Timer0_Start(speed);
+}
+
+/*
+ * Description:
+ * Generate a PWM signal with frequency 500Hz
+ * Timer0 will be used with pre-scaler F_CPU/8
+ * F_PWM=(F_CPU)/(256*N) = (10^6)/(256*8) = 500Hz
+ * Duty Cycle can be changed by updating the value
+ * in The Compare Register
+ */
+
+void PWM_Timer0_Start(uint8 duty_cycle)
+{
+
+	TCNT0 = 0; // Set Timer Initial value
+
+	OCR0 = duty_cycle; // Set Compare Value
+
+	DDRB = DDRB | (1 << PB3); // set PB3/OC0 as output pin --> pin where the PWM signal is generated from MC.
+
+	/* Configure timer control register
+	 * 1. Fast PWM mode FOC0=0
+	 * 2. Fast PWM Mode WGM01=1 & WGM00=1
+	 * 3. Clear OC0 when match occurs (non inverted mode) COM00=0 & COM01=1
+	 * 4. clock = F_CPU/8 CS00=0 CS01=1 CS02=0
+	 */
+	TCCR0 = (1 << WGM00) | (1 << WGM01) | (1 << COM01) | (1 << CS01);
+}

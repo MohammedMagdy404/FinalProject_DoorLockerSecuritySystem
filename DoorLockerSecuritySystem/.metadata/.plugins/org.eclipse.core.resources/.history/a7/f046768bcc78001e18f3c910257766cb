@@ -1,0 +1,46 @@
+ /******************************************************************************
+ *
+ * Project Name: DoorLockerSecuritySystem
+ *
+ * File Name: HMI_main.h
+ *
+ * Description: Header file for HMI_main Micro-controller
+ *
+ * Author: Mohamed Magdy
+ *
+ *******************************************************************************/
+
+#ifndef HMI_MAIN_H_
+#define HMI_MAIN_H_
+
+
+
+
+
+
+/*******************************************************************************
+ *                      Functions Prototypes                                   *
+ *******************************************************************************/
+
+/*
+ * Description:
+ * function to take the password
+ * and handle LCD layout
+ */
+static uint32 Password_taking(uint8 sentence[]);
+
+
+/*
+ * Description:
+ *
+ */
+uint8 mainOptions(void);
+
+/*
+ * Description:
+ *
+ */
+void sendPassword(uint32 password);
+
+
+#endif /* HMI_MAIN_H_ */

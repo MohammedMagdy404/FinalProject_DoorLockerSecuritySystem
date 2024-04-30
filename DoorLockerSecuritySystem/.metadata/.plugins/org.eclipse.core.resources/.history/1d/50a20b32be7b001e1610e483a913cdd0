@@ -1,0 +1,361 @@
+/******************************************************************************
+ *
+ * Project Name: DoorLockerSecuritySystem
+ *
+ * File Name: HMI_main.h
+ *
+ * Description: Source file for HMI_main Micro-controller
+ *
+ * Author: Mohamed Magdy
+ *
+ *******************************************************************************/
+
+#include <util/delay.h>
+#include <avr/io.h>
+#include "HMI_main.h"
+#include "MCAL/lcd.h"
+#include "MCAL/keypad.h"
+#include "MCAL/std_types.h"
+#include "HAL/uart.h"
+#include "HAL/timer1.h"
+
+/*******************************************************************************
+ *                                Definitions                                  *
+ *******************************************************************************/
+
+#define PASSWORD_TIME_OUT 60
+#define DOOR_OPEN_TIME 15
+#define DOOR_HOLD_TIME 3
+#define DOOR_CLOSE_TIME 15
+
+/*******************************************************************************
+ *                           Global Variables                                  *
+ *******************************************************************************/
+
+static uint32 password1 = 0;
+static uint32 password2 = 0;
+static uint32 option_password = 0;
+
+uint8 ack_set = 0;
+uint8 ack_compare = 0;
+
+uint8 option;
+
+uint8 timerValue = 0;
+static uint8 count_timer = 0;
+
+/*******************************************************************************
+ *                           Main Function                                     *
+ *******************************************************************************/
+
+int main(void)
+{
+	/*************************
+	 * 	initialize modules
+	 *************************/
+
+	// start the LCD
+	LCD_init();
+
+	// Configure the UART specifications
+	UART_ConfigType uart_configuration;
+	uart_configuration.baud_rate = 9600;
+	uart_configuration.bit_data = Data_8Bit;
+	uart_configuration.parity = Disabled;
+	uart_configuration.stop_bit = St_1Bit;
+	uart_configuration.trans_mod = ASYNC;
+	uart_configuration.trans_speed = ASYNC_Double;
+
+	// start the UART
+	UART_init(&uart_configuration);
+
+	/* *************************************
+	 * Configure the TIMER1 specifications
+	 * Timer interrupt every 1sec
+	 * In compare modes:
+	 * 		Fcpu = 8Mhz;
+	 * 		initial_value = 0;
+	 * 		compare_value = 31250;
+	 * 		prescaler = 256;
+	 * In Normal Mode:
+	 * 		prescaler = 1024;
+	 */
+	static Timer1_ConfigType timer_config;
+	timer_config.mode = TIMER1_COMPARE_MODE;
+	timer_config.prescaler = TIMER1_PRESCALER_256;
+	timer_config.initial_value = 0;
+	//	timer_config.compare_value = 31250;
+	timer_config.compare_value = 6000;
+
+	SREG |= (1 << 7); /* Enable Global Interrupts */
+
+	// ____________________________________________________________________________________________________________________
+	while (1)
+	{
+		ack_set = 0;
+		password1 = password2 = 0;
+		do
+		{
+			/*********************************************************************************
+			 * 		Password taking from the user in the first time or in change password
+			 *********************************************************************************/
+			password1 = Password_taking("Please Enter Password:");
+			_delay_ms(10);
+			password2 = Password_taking("Please Re-Enter The Same Password:");
+			_delay_ms(10);
+
+			// ------------------------------ the previous worked good --------------------------------------
+			// Send password1 to the Control_ECU
+			sendPassword(password1);
+
+			// Send password2 to the Control_ECU
+			sendPassword(password2);
+
+			_delay_ms(200); // guard delay
+
+			/*****************************************************************
+			 * 		ACK on password taken and checked
+			 ******************************************************************/
+			ack_set = UART_recieveByte();
+			LCD_clearScreen();
+			LCD_displayString("Ack: ");
+			LCD_intgerToString(ack_set);
+			_delay_ms(1000); // guard delay
+
+		} while (ack_set == 0);
+
+		/*****************************************************************
+		 * 		Password is taken and checked
+		 * 		Now the user can choose to open the door or change the password
+		 ******************************************************************/
+		while (1)
+		{
+			// option returned from the mainOptions function '+' or '-' only
+			option = mainOptions();
+			UART_sendByte(option);
+
+			do
+			{
+				// Re-enter password for confirmation
+				option_password = Password_taking("PLZ ENTER PASS: ");
+				sendPassword(option_password);
+				// Acknowledge on password
+				ack_compare = UART_recieveByte();
+
+			} while (ack_compare != 3 && ack_compare != 5);
+
+			//			LCD_clearScreen();
+
+			if (ack_compare == 3)
+			{
+				// Display error message on LCD for 1 minute.
+				LCD_clearScreen();
+				LCD_displayString("  PASSWORED Is");
+				LCD_moveCursor(1, 5);
+				LCD_displayString("WRONG");
+				/*
+				 * System should be locked no inputs from Keypad
+				 * will be accepted during this time period 1min.
+				 */
+				timerValue = PASSWORD_TIME_OUT;
+				count_timer = 0;
+				Timer1_init(&timer_config);
+				Timer1_setCallBack(passwordTimeOut);
+				while (count_timer < timerValue)
+					;
+
+				continue;
+			}
+
+			if (option == '+')
+			{
+				// Display Door messages on LCD for 15s for opening.
+				LCD_clearScreen();
+				LCD_displayString("   Door is");
+				LCD_moveCursor(1, 3);
+				LCD_displayString("Unlocking");
+
+				timerValue = 15;
+				count_timer = 0;
+				Timer1_setCallBack(passwordTimeOut);
+				Timer1_init(&timer_config);
+				while (count_timer < timerValue)
+					;
+
+				// Display Door messages on LCD for 15s for opening.
+				LCD_clearScreen();
+				LCD_displayString("   Door is");
+				LCD_moveCursor(1, 3);
+				LCD_displayString(" opened");
+
+				timerValue = 3;
+				count_timer = 0;
+				Timer1_setCallBack(passwordTimeOut);
+				Timer1_init(&timer_config);
+				while (count_timer < timerValue)
+					;
+
+				// Display Door messages on LCD for 15s for opening.
+				LCD_clearScreen();
+				LCD_displayString("    Door is");
+				LCD_moveCursor(1, 4);
+				LCD_displayString("Locking");
+
+				timerValue = 15;
+				count_timer = 0;
+				Timer1_setCallBack(passwordTimeOut);
+				Timer1_init(&timer_config);
+				while (count_timer < timerValue)
+					;
+			}
+			else if (option == '-')
+			{
+				// break the loop of Option_menu
+				break;
+			}
+			// end of main while(1) loop
+		}
+		// end of main while(1) loop
+	}
+	// end of main
+}
+
+//___________________________________________________________________________________________________________________
+
+/*
+ * Description:
+ * function to take the password
+ * and handle LCD layout
+ */
+static uint32 Password_taking(uint8 sentence[])
+{
+	uint8 key = 90;
+	uint8 enterKey = 90;
+	sint8 i = 0, j = 0;
+	uint32 password = 0;
+
+	LCD_clearScreen();
+	LCD_displayString(sentence);
+	_delay_ms(30);
+
+	while (sentence[i] != '\0')
+	{
+		i++;
+	}
+
+	if (i > 16)
+	{
+		i = 0;
+		while (sentence[i + 16] != '\0')
+		{
+			LCD_shiftScreenLeft(1);
+			_delay_ms(30);
+			i++;
+		}
+		LCD_moveCursor(1, i);
+	}
+	else
+	{
+		LCD_moveCursor(1, 0);
+	}
+
+	/*
+	 * Handling the 2nd Row in the LCD
+	 * 1- taking 5 numbers from the user and save them
+	 * 2- display * for each number
+	 * 3- handling the entered chars to be only numbers
+	 */
+
+	for (; j < 5; j++)
+	{
+		key = KEYPAD_getPressedKey();
+		if (key >= 0 && key <= 9)
+		{
+			password = password * 10 + key;
+			LCD_displayCharacter('*');
+			//			LCD_intgerToString(key);
+		}
+		else
+		{
+			j--;
+		}
+	}
+
+	/*
+	 * listen to the keyboard for Enter button or press '=' to break the loop and read the password.
+	 * OR
+	 * press backspace or on/c on the keypad to delete number (next version of the project (; )
+	 */
+
+	do
+	{
+		enterKey = KEYPAD_getPressedKey();
+		_delay_ms(20);
+	} while (enterKey != '=');
+
+	return password;
+}
+
+/*
+ * Description:
+ * function to display the main options
+ * '+' to open the door
+ * '-' to change password
+ */
+uint8 mainOptions(void)
+{
+	uint8 enterKey = -1;
+
+	LCD_clearScreen();
+	LCD_displayString(" + : Open Door");
+	LCD_moveCursor(1, 0);
+	LCD_displayString(" - : Change Pass");
+	_delay_ms(20);
+
+	while (1)
+	{
+		enterKey = KEYPAD_getPressedKey();
+		if (enterKey == '+' || enterKey == '-')
+		{
+			return enterKey;
+		}
+	}
+}
+
+/*
+ * Description:
+ *
+ */
+void sendPassword(uint32 password)
+{
+	// Send password to the Control_ECU
+	uint8 digit = 0;
+	uint32 pass = 0;
+	sint8 k = 4;
+	uint32 mul = 1;
+	for (k = 4; k >= 0; k--)
+	{
+		mul = 1;
+		for (uint8 h = 0; h < k; h++)
+			mul *= 10;
+		pass = password;
+		pass = pass / mul;
+		digit = pass % 10;
+		UART_sendByte(digit);
+		_delay_ms(20); // A Very Important Delay
+	}
+}
+
+/*
+ * Description:
+ *
+ */
+void passwordTimeOut(void)
+{
+	if (count_timer >= timerValue)
+	{
+		Timer1_deInit();
+		return;
+	}
+	count_timer++;
+}

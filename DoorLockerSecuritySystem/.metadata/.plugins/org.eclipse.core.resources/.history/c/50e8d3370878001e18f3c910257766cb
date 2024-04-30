@@ -1,0 +1,17 @@
+HMI_main.o HMI_main.o: ../HMI_main.c ../HAL/uart.h ../HAL/std_types.h \
+  ../MCAL/lcd.h ../MCAL/std_types.h ../MCAL/keypad.h ../MCAL/std_types.h \
+  ../HMI_main.h
+
+../HAL/uart.h:
+
+../HAL/std_types.h:
+
+../MCAL/lcd.h:
+
+../MCAL/std_types.h:
+
+../MCAL/keypad.h:
+
+../MCAL/std_types.h:
+
+../HMI_main.h:

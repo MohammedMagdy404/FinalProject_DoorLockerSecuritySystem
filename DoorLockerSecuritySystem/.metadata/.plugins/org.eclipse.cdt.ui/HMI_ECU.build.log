@@ -1,0 +1,46 @@
+15:51:43 **** Incremental Build of configuration Debug for project HMI_ECU ****
+make all 
+Building file: ../HMI_main.c
+Invoking: AVR Compiler
+avr-gcc -Wall -g2 -gstabs -O0 -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega32 -DF_CPU=8000000UL -MMD -MP -MF"HMI_main.d" -MT"HMI_main.o" -c -o "HMI_main.o" "../HMI_main.c"
+In file included from ../HMI_main.c:18:
+c:/winavr-20100110/lib/gcc/../../avr/include/util/delay.h:90:3: warning: #warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+../HMI_main.c: In function 'main':
+../HMI_main.c:103: warning: pointer targets in passing argument 1 of 'Password_taking' differ in signedness
+../HMI_main.c:105: warning: pointer targets in passing argument 1 of 'Password_taking' differ in signedness
+../HMI_main.c:141: warning: pointer targets in passing argument 1 of 'Password_taking' differ in signedness
+../HMI_main.c: In function 'Password_taking':
+../HMI_main.c:237: warning: pointer targets in passing argument 1 of 'LCD_displayString' differ in signedness
+Finished building: ../HMI_main.c
+ 
+Building target: HMI_ECU.elf
+Invoking: AVR C Linker
+avr-gcc -Wl,-Map,HMI_ECU.map -mmcu=atmega32 -o "HMI_ECU.elf"  ./MCAL/keypad.o ./MCAL/lcd.o  ./HAL/gpio.o ./HAL/timer1.o ./HAL/uart.o  ./HMI_main.o   
+Finished building target: HMI_ECU.elf
+ 
+Invoking: AVR Create Extended Listing
+avr-objdump -h -S HMI_ECU.elf  >"HMI_ECU.lss"
+Finished building: HMI_ECU.lss
+ 
+Create Flash image (ihex format)
+avr-objcopy -R .eeprom -R .fuse -R .lock -R .signature -O ihex HMI_ECU.elf  "HMI_ECU.hex"
+Finished building: HMI_ECU.hex
+ 
+Invoking: Print Size
+avr-size --format=avr --mcu=atmega32 HMI_ECU.elf
+AVR Memory Usage
+----------------
+Device: atmega32
+
+Program:   13484 bytes (41.1% Full)
+(.text + .data + .bootloader)
+
+Data:        217 bytes (10.6% Full)
+(.data + .bss + .noinit)
+
+
+Finished building: sizedummy
+ 
+
+15:51:44 Build Finished. 0 errors, 5 warnings. (took 659ms)
+

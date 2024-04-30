@@ -1,0 +1,117 @@
+/******************************************************************************
+ *
+ * Module: TIMER1
+ *
+ * File Name: timer1.c
+ *
+ * Description: Source file for the TIMER1 AVR driver
+ *
+ * Author: Mohamed Magdy
+ *
+ *******************************************************************************/
+
+#include "gpio.h"
+#include "std_types.h"
+#include "timer1.h"
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+/*******************************************************************************
+ *                           Global Variables                                  *
+ *******************************************************************************/
+// static volatile uint8 tick = 0;
+
+/* Global variables to hold the address of the call back function in the application */
+static volatile void (*timer1_callback)(void) = NULL_PTR;
+
+/*******************************************************************************
+ *                       Interrupt Service Routines                            *
+ *******************************************************************************/
+// Timer1 Compare Match ISR
+ISR(TIMER1_COMPA_vect)
+{
+	if (timer1_callback != NULL_PTR)
+	{
+		/* Call the Call Back function in the application after the edge is detected */
+		(*timer1_callback)(); /* another method to call the function using pointer to function timer1_callback(); */
+	}
+}
+
+// Timer1 Overflow ISR
+ISR(TIMER1_OVF_vect)
+{
+	if (timer1_callback != NULL_PTR)
+	{
+		/* Call the Call Back function in the application after the edge is detected */
+		(*timer1_callback)(); /* another method to call the function using pointer to function timer1_callback(); */
+	}
+}
+
+/*******************************************************************************
+ *                      Functions Definitions                                  *
+ *******************************************************************************/
+
+/*
+ * Description:
+ * Function to initialize the Timer driver.
+ * 1. Set the required clock.
+ * 2. Initialize Timer1 Registers.
+ */
+void Timer1_init(const Timer1_ConfigType *Config_Ptr)
+{
+	// Configure Timer1 Control Register
+	TCCR1A = 0; // Normal mode by default
+	TCCR1B = 0;
+
+	/*
+	 * insert the required clock value in the first three bits (CS10, CS11 and CS12)
+	 * of TCCR1B Register
+	 */
+	TCCR1B |= (Config_Ptr->prescaler);
+
+	/* Initial Value for Timer1 */
+	TCNT1 = (Config_Ptr->initial_value);
+
+	if (Config_Ptr->mode == TIMER1_COMPARE_MODE)
+	{
+		// Set the compare value
+		OCR1A = (Config_Ptr->compare_value);
+
+		// Enable Compare Match interrupt
+		TIMSK |= (1 << OCIE1A);
+	}
+	else
+	{
+		// Enable Timer1 overflow interrupt
+		TIMSK |= (1 << TOIE1);
+	}
+}
+
+/*
+ * Description:
+ *  Function to disable the Timer1.
+ */
+void Timer1_deInit(void)
+{
+	/* Clear All Timer1 Registers */
+	TCCR1A = 0;
+	TCCR1B = 0;
+	TCNT1 = 0;
+	OCR1A = 0;
+
+	// Disable Timer1 interrupts
+	TIMSK &= ~((1 << OCIE1A) | (1 << TOIE1));
+
+	/* Reset the global pointer value */
+	timer1_callback = NULL_PTR;
+}
+
+/*
+ * Description:
+ *  Function to set the Call Back function address.
+ */
+void Timer1_setCallBack(void (*a_ptr)(void))
+{
+	/* Save the address of the Call back function in a global variable */
+	timer1_callback = a_ptr;
+}
